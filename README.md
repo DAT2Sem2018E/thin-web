@@ -57,7 +57,7 @@ public class ExampleServer extends Server {
 ```
 In the above example, some typical Restful webservice calls for Person are implemented.
 
-If by any chance form parameters are needed, one just add a parameter with the type Request. The Response object
+If by any chance form parameters are needed, just add a method parameter with the type Request. The Response object
 can be accessed the same way.
 
 ```java
@@ -74,7 +74,6 @@ arbitrary deep paths.
 ```java
   public void get(Request request, Response response, String... path) throws IOException {
     File file = file(request.getPath());
-    System.out.print("\nFile: "+file.getAbsolutePath());
     if (file.isFile()) response.send(file);
     else response.status(404).send("Unknown resource: "+request.getPath());
     }
