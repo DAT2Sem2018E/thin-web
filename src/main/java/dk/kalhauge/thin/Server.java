@@ -31,8 +31,8 @@ public abstract class Server implements Runnable {
     return this;
     }
   
-  String getName() {
-    return "/"+name;
+  String name() {
+    return name;
     }
   
   protected Server root(File root) {
@@ -46,7 +46,7 @@ public abstract class Server implements Runnable {
     }
   
   public void command(String line) {
-    if ("exit".equals(line)) stop();
+    if ("stop".equals(line)) stop();
     }
   
   public Server start() {
@@ -88,7 +88,7 @@ public abstract class Server implements Runnable {
     }
   
   File file(String path) {
-    return new File(root, path);
+    return new File(root, path.substring(name.length() + 1));
     }
   
   void report(Service service, String message) {
@@ -98,20 +98,12 @@ public abstract class Server implements Runnable {
   public void postCoffee() throws ImATeapotException {
     if ("Teapot".equals(name)) throw new ImATeapotException("This server will not brew coffee");
     }
-  
-//  public final void xrun() {
-//    Class klass = this.getClass();
-//    System.out.println("Class: "+klass.getName());
-//    for (Method method : klass.getMethods()) {
-//      System.out.println("  Method: "+method.getName());
-//      }
-//    try {
-//      Method method = klass.getMethod("getPerson", String.class);
-//      System.out.println("X "+method);
-//      }
-//    catch (NoSuchMethodException | SecurityException ex) {
-//      Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
-//      }
-//    }
+
+  public void get(Request request, Response response, String... path) throws IOException {
+    File file = file(request.getPath());
+    System.out.print("\nFile: "+file.getAbsolutePath());
+    if (file.isFile()) response.send(file);
+    else response.status(404).send("Unknown resource: "+request.getPath());
+    }
 
   }

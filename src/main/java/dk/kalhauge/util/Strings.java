@@ -26,5 +26,5 @@ public class Strings {
     if (pos < 0) return "";
     return word.substring(pos + 1);
     } 
-  
+    
   }
