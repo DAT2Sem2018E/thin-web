@@ -33,12 +33,12 @@ public class Response {
     put("json", "application/json");
     }};
   private static final int NL = 10;
-  private final Socket socket;
+  private final OutputStream out;
   private int status = 200;
   private String type = "json";
 
-  public Response(Socket socket) {
-    this.socket = socket;
+  public Response(OutputStream out) {
+    this.out = out;
     }
   
   private static void writeLine(OutputStreamWriter writer, String line) throws IOException {
@@ -58,7 +58,7 @@ public class Response {
     return this;
     }
   
-  private void writeHeaders(OutputStream out, long contentLenght) throws IOException {
+  private void writeHeaders(long contentLenght) throws IOException {
     OutputStreamWriter writer = new OutputStreamWriter(out, "utf-8");
     writeLine(writer, "HTTP/1.1 "+status+" "+messages.get(status));
     writeLine(writer, "Content-Type: "+mimes.get(type));
@@ -68,18 +68,18 @@ public class Response {
     }
   
   public void send(byte[] body) throws IOException {
-    try (OutputStream out = socket.getOutputStream()) {
-      writeHeaders(out, body.length);
+    try {
+      writeHeaders(body.length);
       out.write(body);
-      out.flush();
       }
+    finally { out.close(); }
     }
 
   public void send() throws IOException {
-    try (OutputStream out = socket.getOutputStream()) {
-      writeHeaders(out, 0);
-      out.flush();
+    try {
+      writeHeaders(0);
       }
+    finally { out.close(); }
     }
 
   public void send(String message) throws IOException {
@@ -89,14 +89,15 @@ public class Response {
   public void send(File file) throws IOException {
     int dotPos = file.getName().lastIndexOf(".");
     type = dotPos < 0 ? "txt" : file.getName().substring(dotPos + 1);
-    try (OutputStream out = socket.getOutputStream()) {
-      writeHeaders(out, file.length());
+    try {
+      writeHeaders(file.length());
       try (FileInputStream in = new FileInputStream(file)) {
         byte[] buffer = new byte[1024];
         int count;
         while ((count = in.read(buffer)) > 0) out.write(buffer, 0, count);
         }
       }
+    finally { out.close(); }
     }
     
   }

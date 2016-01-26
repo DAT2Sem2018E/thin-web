@@ -133,8 +133,8 @@ class Service implements Runnable {
   @Override
   public void run() {
     try {
-      Request request = new Request(socket);
-      Response response = new Response(socket);
+      Request request = new Request(socket.getInputStream());
+      Response response = new Response(socket.getOutputStream());
       if (request.getPath().startsWith(server.getName()+"/")) invokeMethod(request, response);
       else readFile(request, response);
       }

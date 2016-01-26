@@ -40,8 +40,7 @@ public class Request {
     return buffer;
     }
   
-  Request(Socket socket) throws IOException {
-    InputStream in = socket.getInputStream();
+  Request(InputStream in) throws IOException {
     String[] parts = readLine(in).split(" ");
     
     method = parts[0].toLowerCase();
