@@ -6,6 +6,14 @@ used in Java. It is also an attempt to show that Java frameworks don't have to
 drown in annotations and boiler plate code.
 
 ``` java
-public class MyServer { }
+import dk.kalhauge.this.Server;
+
+public class ExampleServer extends Server {
+  
+  public static void main(String[] args) {
+    new ExampleServer(4711).start();
+    }
+  
+  }
 ```
 
