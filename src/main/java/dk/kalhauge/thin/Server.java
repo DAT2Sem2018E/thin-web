@@ -2,6 +2,7 @@ package dk.kalhauge.thin;
 
 import dk.kalhauge.thin.exceptions.ImATeapotException;
 import java.io.BufferedReader;
+import java.io.Console;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -16,7 +17,7 @@ public abstract class Server implements Runnable {
   private final int port;
   private File root;
   private String name;
-  private BufferedReader in;
+  private final BufferedReader in;
   
   public Server(int port) throws IOException {
     this.port = port;
@@ -45,7 +46,7 @@ public abstract class Server implements Runnable {
     return this;
     }
   
-  public void command(String line) {
+  protected void command(String line) {
     if ("stop".equals(line)) stop();
     }
   
