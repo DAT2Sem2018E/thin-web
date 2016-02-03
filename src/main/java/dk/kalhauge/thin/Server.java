@@ -2,7 +2,6 @@ package dk.kalhauge.thin;
 
 import dk.kalhauge.thin.exceptions.ImATeapotException;
 import java.io.BufferedReader;
-import java.io.Console;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -69,7 +68,7 @@ public abstract class Server implements Runnable {
       while (running) {
         try {
           Socket socket = server.accept();
-          Service service = new Service(this, socket);
+          HttpService service = new HttpService(this, socket);
           new Thread(service).start();
           }
         catch (SocketTimeoutException sto) {
@@ -92,7 +91,7 @@ public abstract class Server implements Runnable {
     return new File(root, path.substring(name.length() + 1));
     }
   
-  void report(Service service, String message) {
+  void report(HttpService service, String message) {
     System.err.println(">>> "+message);
     }
   
@@ -102,6 +101,7 @@ public abstract class Server implements Runnable {
 
   public void get(Request request, Response response, String... path) throws IOException {
     File file = file(request.getPath());
+    System.out.print("\nPath: "+request.getPath());
     System.out.print("\nFile: "+file.getAbsolutePath());
     if (file.isFile()) response.send(file);
     else response.status(404).send("Unknown resource: "+request.getPath());

@@ -8,14 +8,13 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.Socket;
 import static dk.kalhauge.util.Strings.*;
-import java.io.File;
 
-class Service implements Runnable {
+class HttpService implements Runnable {
   private final Server server;
   private final Socket socket;
   private final Gson gson = new Gson();
 
-  public Service(Server server, Socket socket) throws IOException {
+  public HttpService(Server server, Socket socket) throws IOException {
     this.server = server;
     this.socket = socket;
     }
@@ -85,22 +84,21 @@ class Service implements Runnable {
     return pack.append("]").toString();
     }
   
-  
-  private boolean invokeMethod(String path, Request request, Response response) throws IOException {
-//    String path = request.getPath();
-//    path = path.substring(server.name().length() + 1);
-    return false;
-    }
-    
   @Override
   public void run() {
     try {
-      Request request = new Request(socket.getInputStream());
-      Response response = new Response(socket.getOutputStream());
+      Request request = new HttpRequest(socket.getInputStream());
+      Response response = new HttpResponse(socket.getOutputStream());
       String path = request.getPath();
-      if (!path.startsWith("/"+server.name())) response.status(400).send("Unknown application");
+      if (!path.startsWith("/"+server.name())) {
+        response.status(400).send("Unknown application");
+        return;
+        }
       path = path.substring(server.name().length() + 1);
-      if (!path.isEmpty() && !(path.charAt(0) == '/')) response.status(400).send("Unknown application");
+      if (!path.isEmpty() && !(path.charAt(0) == '/')) {
+        response.status(400).send("Unknown application");
+        return;
+        }
       String[] parts;
       if (request.getBody().length > 0) {
         parts = (path+"/#").split("/");
@@ -115,6 +113,7 @@ class Service implements Runnable {
         for (int index = 0; index < types.length; index++) {
           Class type = types[index];
           if (type == Request.class) values[index] = request;
+          //if (type.isAssignableFrom(Request.class)) values[index] = request;
           else if (type == Response.class) values[index] = response;
           else {
             String text = pack(parts, context.offset++, index == types.length - 1, context.method.isVarArgs());
