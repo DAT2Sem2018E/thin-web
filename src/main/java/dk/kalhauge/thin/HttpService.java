@@ -1,87 +1,54 @@
 package dk.kalhauge.thin;
 
-import dk.kalhauge.thin.exceptions.ClientErrorException;
-import dk.kalhauge.thin.exceptions.NotFoundException;
-import com.google.gson.Gson;
+import dk.kalhauge.util.LinkedPath;
+import dk.kalhauge.util.Path;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.Socket;
 import static dk.kalhauge.util.Strings.*;
+import java.nio.charset.Charset;
 
 class HttpService implements Runnable {
   private final Server server;
   private final Socket socket;
-  private final Gson gson = new Gson();
 
   public HttpService(Server server, Socket socket) throws IOException {
     this.server = server;
     this.socket = socket;
     }
 
-  private int match(Method method, String... parts) {
-    if (parts.length == 0) return 0;
-    int index = 0;
-    String name = parts[0];
-    do {
-      if (!method.getName().startsWith(name)) break;
-      if (method.getName().equals(name)) return index + 1;
-      if (++index >= parts.length) break;
-      name += pascal(parts[index]);
-      }
-    while (true);
-    return -1;
+  private String[] split(Server server, Request request) throws Response.BadRequestException {
+    String path = request.getPath();
+    if (!path.startsWith(server.path())) throw new Response.BadRequestException();
+    path = path.substring(server.path().length());
+    if (!request.hasBody()) return path.split("/");
+    String[] parts = (path+"/#").split("/");
+    parts[parts.length - 1] = new String(request.getBody(), Charset.forName("utf-8"));
+    return parts;
     }
   
-  private class InvocationContext {
-    Method method;
-    int offset;
-
-    public InvocationContext(Method method, int offset) {
-      this.method = method;
-      this.offset = offset;
-      }
-    
+  private Path<String> eatNext(Path<String> parts) {
+    Path<String> parameters = parts.getRest();
+    if (parameters.isEmpty()) return Path.EMPTY;
+    return new LinkedPath<>(parts.getFirst()+pascal(parameters.getFirst()), parameters.getRest());
     }
   
-  private int freeParameters(Method method) {
-    int count = 0;
+  private Path<String> match(Method method, Path<String> parts) {
+    int free = 0;
     for (Class klass : method.getParameterTypes())
-        if (klass != Request.class && klass != Response.class) count++;
-    return count;
+        if (klass != Request.class && klass != Response.class) free++;
+    return match(method.getName(), free, method.isVarArgs(), parts);
     }
   
-  private InvocationContext find(Method[] methods, String[] parts) throws ClientErrorException {
-    Method candidate = null;
-    int bestOffset = -1;
-    for (Method method : methods) {
-      int offset = match(method, parts);
-      if (offset < 0) continue;
-      if (offset <= bestOffset) continue;
-      int count = offset + freeParameters(method);
-      if (count == parts.length || method.isVarArgs() && count <= parts.length) {
-        bestOffset = offset;
-        candidate = method;
-        }
-      }
-    if (candidate == null) throw new NotFoundException("Method for "+camel(parts)+"  not found");
-    return new InvocationContext(candidate, bestOffset);
-    }
-  
-  private <T> T fromJson(String text, Class<T> type) {
-    if (type == String.class && text.charAt(0) != '"') text = "\""+text+"\"";
-    System.out.println(">"+text+"<");
-    return gson.fromJson(text, type);
-    }
-  
-  private String pack(String[] parts, int position, boolean last, boolean varArgs) {
-    if (!last || !varArgs) return parts[position];
-    StringBuilder pack = new StringBuilder("[");
-    for (int i = position; i < parts.length; i++) {
-      if (i > position) pack.append(",");
-      pack.append(parts[i]);
-      }
-    return pack.append("]").toString();
+  private Path<String> match(String name, int free, boolean varArgs, Path<String> parts) {
+    if (parts.isEmpty()) return Path.EMPTY;
+    String partName = parts.getFirst();
+    if (!name.startsWith(partName)) return Path.EMPTY;
+    if (!name.equals(partName)) return match(name, free, varArgs, eatNext(parts));
+    if (varArgs && parts.size() >= free) return parts;
+    if (parts.size() == free + 1) return parts;
+    return Path.EMPTY;
     }
   
   @Override
@@ -89,69 +56,51 @@ class HttpService implements Runnable {
     try {
       Request request = new HttpRequest(socket.getInputStream());
       Response response = new HttpResponse(socket.getOutputStream());
-      String path = request.getPath();
-      if (!path.startsWith("/"+server.name())) {
-        response.status(400).send("Unknown application");
-        return;
-        }
-      path = path.substring(server.name().length() + 1);
-      if (!path.isEmpty() && !(path.charAt(0) == '/')) {
-        response.status(400).send("Unknown application");
-        return;
-        }
-      String[] parts;
-      if (request.getBody().length > 0) {
-        parts = (path+"/#").split("/");
-        parts[parts.length - 1] = new String(request.getBody(), "utf-8");
-        }
-      else parts = path.split("/");
-      parts[0] = request.getMethod();
+      Parser parser = server.parser(request.getContentType());
       try {
-        InvocationContext context = find(server.getClass().getMethods(), parts);
-        Class[] types = context.method.getParameterTypes();
+        Path<String> parts = new LinkedPath<>(request.getMethod(), split(server, request));
+        Path<String> parameters = Path.EMPTY;
+        Method method = null;
+        for (Method m : server.getClass().getMethods()) {
+          Path<String> p = match(m, parts);
+          if (p.isEmpty()) continue;
+          if (parameters.isEmpty() || p.getFirst().length() > parameters.getFirst().length()) {
+            parameters = p;
+            method = m;
+            } 
+          }
+        if (method == null) throw new Response.NotFoundException();
+        parameters = parameters.getRest();
+System.out.print("\n** method: "+method.getName()+"("+String.join(", ", parameters)+")");
+        Class[] types = method.getParameterTypes();
         Object[] values = new Object[types.length];
         for (int index = 0; index < types.length; index++) {
           Class type = types[index];
           if (type == Request.class) values[index] = request;
-          //if (type.isAssignableFrom(Request.class)) values[index] = request;
           else if (type == Response.class) values[index] = response;
           else {
-            String text = pack(parts, context.offset++, index == types.length - 1, context.method.isVarArgs());
-            System.out.println("\nvarArgs: "+context.method.isVarArgs()+"\ntext:    '"+text+"'\ntype:    "+type.getName());
-            values[index] = gson.fromJson(text, type);
+            String text =
+                method.isVarArgs() && index == types.length - 1 
+                ? "["+String.join(",", parameters)+"]"
+                : parameters.getFirst();
+            values[index] = parser.fromText(text, type);
             }
           }
-        if (context.method.getReturnType().equals(Void.TYPE)) {
-          context.method.invoke(server, values);
+        if (method.getReturnType().equals(Void.TYPE)) {
+          method.invoke(server, values);
           response.status(204).send();
           }
         else {
-          Object result = context.method.invoke(server, values);
-          String body = gson.toJson(result, context.method.getReturnType());
+          Object result = method.invoke(server, values);
+          String body = parser.toText(result, method.getReturnType());
           response.send(body);
           }
         }
-      catch (ClientErrorException cee) {
-        response.status(cee.getStatus()).send(cee.getMessage());
-        }
-      catch ( IllegalAccessException
-          | IllegalArgumentException ex
-          ) {
-        response.status(400).send(ex.getMessage());
-        }
-      catch (InvocationTargetException ite) {
-        if (ite.getCause() instanceof ClientErrorException) {
-          ClientErrorException cee = (ClientErrorException)ite.getCause();
-          response.status(cee.getStatus()).send(cee.getMessage());
-          }
-        else response.status(400).send(ite.getMessage());
-        }
-      catch (UnsupportedOperationException uoe) {
-        response.status(501).send(uoe.getMessage());
-        }
-      catch (RuntimeException re) {
-        re.printStackTrace();
-        response.status(500).send(re.getMessage());
+      catch (Response.HttpException he) {
+        response.send(he);
+        } 
+      catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+        response.send(new Response.BadRequestException());
         }
       }
     catch (IOException ioe) {

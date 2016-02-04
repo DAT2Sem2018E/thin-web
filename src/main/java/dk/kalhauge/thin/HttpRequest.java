@@ -23,6 +23,7 @@ class HttpRequest implements Request {
     do {
       // all characters in the header is ASCII = single byte characters
       char c = (char)in.read();
+      //System.out.print(c == 0 ? '#' : c);
       if (c == '\r') continue;
       if (c == '\n') break;
       builder.append(c);
@@ -95,6 +96,11 @@ class HttpRequest implements Request {
   public byte[] getBody() {
     return body;
     }
+  
+  @Override
+  public boolean hasBody() {
+    return contentLength > 0;
+    }
 
   @Override
   public int getContentLength() {
@@ -104,6 +110,15 @@ class HttpRequest implements Request {
   @Override
   public String getProtocol() {
     return protocol;
+    }
+
+  @Override
+  public String getContentType() {
+    String mime = headers.get("Content-Type");
+    if (mime == null) mime = "text/plain";
+    int pos = mime.indexOf(';');
+    if (pos >= 0) mime = mime.substring(0, pos - 1);
+    return mime;
     }
   
   }

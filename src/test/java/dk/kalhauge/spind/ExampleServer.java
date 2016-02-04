@@ -46,8 +46,8 @@ public class ExampleServer extends Server {
     return Person.remove(id);
     }
   
-  public String getHelloMessage(Request request) {
-    return "Hello "+request.getParameter("quote");
+  public String getHelloMessage(String greeting, Request request) {
+    return greeting+" "+request.getParameter("quote");
     }
   
   public void putInfo(String message) {

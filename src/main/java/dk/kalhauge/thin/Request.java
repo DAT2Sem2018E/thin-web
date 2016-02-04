@@ -9,6 +9,8 @@ public interface Request {
   String getMethod();
   String getPath();
   byte[] getBody();
+  boolean hasBody();
   int getContentLength();
+  String getContentType();
   String getProtocol();
   }

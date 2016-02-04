@@ -1,6 +1,7 @@
 package dk.kalhauge.thin;
 
 import dk.kalhauge.thin.exceptions.ImATeapotException;
+import dk.kalhauge.thin.protocol.JsonParser;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -8,11 +9,14 @@ import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public abstract class Server implements Runnable {
   private boolean running = false;
+  private final Map<String, Parser> parsers = new HashMap<>();
   private final int port;
   private File root;
   private String name;
@@ -24,6 +28,16 @@ public abstract class Server implements Runnable {
     root = new File(getClass().getResource("/").getPath());
     name = getClass().getSimpleName();
     if (name.endsWith("Server")) name = name.substring(0, name.length() - 6);
+    parser(new JsonParser());
+    }
+  
+  protected final Parser parser(String mime) {
+    return parsers.get(mime);
+    }
+  
+  protected final Server parser(Parser value) {
+    parsers.put(value.getMime(), value);
+    return this;
     }
   
   protected Server name(String value) {
@@ -33,6 +47,11 @@ public abstract class Server implements Runnable {
   
   String name() {
     return name;
+    }
+  
+  String path() {
+    if (name.isEmpty()) return "/";
+    return "/"+name+"/";
     }
   
   protected Server root(File root) {

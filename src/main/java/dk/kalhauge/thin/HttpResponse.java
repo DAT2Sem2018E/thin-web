@@ -1,5 +1,6 @@
 package dk.kalhauge.thin;
 
+import dk.kalhauge.thin.exceptions.ClientErrorException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -103,6 +104,14 @@ class HttpResponse implements Response {
         }
       }
     finally { out.close(); }
+    }
+
+  @Override
+  public void send(HttpException he) throws IOException {
+    //TODO: use the exception message
+    status(he.getStatus());
+    send();
+    // send(he.getMessage());
     }
     
   }

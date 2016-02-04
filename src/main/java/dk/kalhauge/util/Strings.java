@@ -1,5 +1,7 @@
 package dk.kalhauge.util;
 
+import java.util.function.Function;
+
 public class Strings {
   
   public static String pascal(String word) {
@@ -26,5 +28,14 @@ public class Strings {
     if (pos < 0) return "";
     return word.substring(pos + 1);
     } 
-    
+  
+  public static <T> String join(CharSequence delimiter, Function<T, String> converter, Iterable<T> collection) {
+    String text = null;
+    for (T item : collection) {
+      if (text == null) text = converter.apply(item);
+      else text += delimiter+converter.apply(item);
+      }
+    return text;
+    }
+  
   }
