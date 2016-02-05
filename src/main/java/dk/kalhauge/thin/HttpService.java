@@ -57,8 +57,12 @@ class HttpService implements Runnable {
       Request request = new HttpRequest(socket.getInputStream());
       Response response = new HttpResponse(socket.getOutputStream());
       Parser parser = server.parser(request.getContentType());
+System.out.print("\n** content:"+request.getContentType());
+System.out.print("\n** parser: "+parser);
+
       try {
         Path<String> parts = new LinkedPath<>(request.getMethod(), split(server, request));
+System.out.print("\n** path:   "+String.join(", ", parts));
         Path<String> parameters = Path.EMPTY;
         Method method = null;
         for (Method m : server.getClass().getMethods()) {
@@ -74,20 +78,27 @@ class HttpService implements Runnable {
 System.out.print("\n** method: "+method.getName()+"("+String.join(", ", parameters)+")");
         Class[] types = method.getParameterTypes();
         Object[] values = new Object[types.length];
+//        boolean autoResponse = true;
         for (int index = 0; index < types.length; index++) {
           Class type = types[index];
           if (type == Request.class) values[index] = request;
-          else if (type == Response.class) values[index] = response;
+          else if (type == Response.class) {
+            values[index] = response;
+//            autoResponse = false;
+            }
           else {
             String text =
                 method.isVarArgs() && index == types.length - 1 
                 ? "["+String.join(",", parameters)+"]"
                 : parameters.getFirst();
+System.out.print("\n** text:   "+text);
+System.out.print("\n** parser: "+parser);
             values[index] = parser.fromText(text, type);
             }
           }
         if (method.getReturnType().equals(Void.TYPE)) {
           method.invoke(server, values);
+//          if (autoResponse)
           response.status(204).send();
           }
         else {
@@ -103,8 +114,8 @@ System.out.print("\n** method: "+method.getName()+"("+String.join(", ", paramete
         response.send(new Response.BadRequestException());
         }
       }
-    catch (IOException ioe) {
-      server.report(this, ioe.getMessage());
+    catch (Response.BadRequestException | IOException bre) {
+      server.report(this, bre.getMessage());
       }
     }
 

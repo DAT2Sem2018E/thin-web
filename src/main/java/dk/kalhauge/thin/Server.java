@@ -1,6 +1,5 @@
 package dk.kalhauge.thin;
 
-import dk.kalhauge.thin.exceptions.ImATeapotException;
 import dk.kalhauge.thin.protocol.JsonParser;
 import java.io.BufferedReader;
 import java.io.File;
@@ -32,6 +31,7 @@ public abstract class Server implements Runnable {
     }
   
   protected final Parser parser(String mime) {
+    if (mime == null || !parsers.containsKey(mime)) mime = Parser.JSON;
     return parsers.get(mime);
     }
   
@@ -74,6 +74,7 @@ public abstract class Server implements Runnable {
     }
   
   public void stop() {
+    System.out.print("\n$$ server stopping...");
     running = false;
     }
   
@@ -81,9 +82,19 @@ public abstract class Server implements Runnable {
   public void run() {
     running = true;
     try (ServerSocket server = new ServerSocket(port)) {
+      new Thread(new Runnable() {
+          @Override
+          public void run() { 
+            try { while (running) if (in.ready()) command(in.readLine()); }
+            catch (IOException ioe) { System.err.println(ioe.getMessage()); }
+            }
+          }).start();
       server.setSoTimeout(10000);
-      System.out.print("\nName: "+name+"\nRoot: "+root.getAbsolutePath());
-      System.out.print("\nWaiting for requests on "+port+"...");
+      System.out.print("\n$$ Name: "+name+"\n$$ Root: "+root.getAbsolutePath());
+      System.out.print("\n$$ Waiting for requests on "+port+"...");
+      int i = 0;
+      char[] ws = new char[] { '-', '\\', '|', '/' };
+      System.out.print("\n$$ .");
       while (running) {
         try {
           Socket socket = server.accept();
@@ -91,10 +102,8 @@ public abstract class Server implements Runnable {
           new Thread(service).start();
           }
         catch (SocketTimeoutException sto) {
-          while (in.ready()) {
-            command(in.readLine());
-            } 
-          System.out.print(".");
+          System.out.print("\b$$ "+ws[i]);
+          i = (i + 1)%4;
           } 
         }
       }
@@ -102,11 +111,12 @@ public abstract class Server implements Runnable {
       Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ioe);
       }
     finally {
-      System.out.println("\nStopped");
+      System.out.println("\n$$ Server stopped");
       }
     }
   
   File file(String path) {
+    if ("/favicon.ico".equals(path)) return new File(root, path);
     return new File(root, path.substring(name.length() + 1));
     }
   
@@ -114,11 +124,19 @@ public abstract class Server implements Runnable {
     System.err.println(">>> "+message);
     }
   
-  public void postCoffee() throws ImATeapotException {
-    if ("Teapot".equals(name)) throw new ImATeapotException("This server will not brew coffee");
+  public void postCoffee() throws Response.ImATeapotException {
+    if ("Teapot".equals(name)) throw new Response.ImATeapotException();
     }
 
   public void get(Request request, Response response, String... path) throws IOException {
+    File file = file(request.getPath());
+    System.out.print("\nPath: "+request.getPath());
+    System.out.print("\nFile: "+file.getAbsolutePath());
+    if (file.isFile()) response.send(file);
+    else response.status(404).send("Unknown resource: "+request.getPath());
+    }
+
+  public void post(Request request, Response response, String... path) throws IOException {
     File file = file(request.getPath());
     System.out.print("\nPath: "+request.getPath());
     System.out.print("\nFile: "+file.getAbsolutePath());

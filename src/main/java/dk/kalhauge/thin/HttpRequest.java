@@ -3,12 +3,13 @@ package dk.kalhauge.thin;
 import static dk.kalhauge.util.Strings.*;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
 
 class HttpRequest implements Request {
-  private static final int NL = 10;
-  private static final int CR = 13;
   private final String method;
   private final String path;
   private final String protocol;
@@ -25,7 +26,7 @@ class HttpRequest implements Request {
       char c = (char)in.read();
       //System.out.print(c == 0 ? '#' : c);
       if (c == '\r') continue;
-      if (c == '\n') break;
+      if (c == '\n' || c == 65535) break;
       builder.append(c);
       }
     while (true);
@@ -40,20 +41,27 @@ class HttpRequest implements Request {
     return buffer;
     }
   
-  HttpRequest(InputStream in) throws IOException {
+  private void setQuery(String query) throws UnsupportedEncodingException {
+    String[] parts = query.split("&");
+    for (String part : parts) {
+      String[] pair = part.split("=", 2);
+      parameters.put(
+          URLDecoder.decode(pair[0], "UTF-8"),
+          URLDecoder.decode(pair[1], "UTF-8")
+          );
+      System.out.print("\n## "+URLDecoder.decode(pair[0], "UTF-8")+"="+URLDecoder.decode(pair[1], "UTF-8"));
+      }
+    }
+  
+  HttpRequest(InputStream in) throws IOException, Response.BadRequestException {
     String[] parts = readLine(in).split(" ");
-    
+    if (parts.length != 3) throw new Response.BadRequestException();
     method = parts[0].toLowerCase();
-    path = left(parts[1], "?");
-    if (parts[1].contains("?")) {
-      String[] params = right(parts[1], "?").split("&");
-      for (String param : params) {
-        parameters.put(left(param, "="), right(param, "="));
-        System.out.println("\n :"+left(param, "=")+"="+right(param, "="));
-        }
-      }    
+    String[] resourceParts = parts[1].split("\\?", 2);
+    path = resourceParts[0];
+    if (resourceParts.length == 2) setQuery(resourceParts[1]);
     protocol = parts[2];
-    
+
     do {
       String line = readLine(in).trim();
       if (line.isEmpty()) break;
@@ -64,7 +72,12 @@ class HttpRequest implements Request {
       if (key.equalsIgnoreCase("Content-Length")) contentLength = Integer.valueOf(value);
       }
     while(true);
-    body = read(in, contentLength);
+    byte[] buffer = read(in, contentLength);
+    if ("application/x-www-form-urlencoded".equals(getContentType())) {
+      setQuery(new String(buffer, "UTF-8"));
+      body = new byte[0];
+      }
+    else body = buffer;
     }
 
   @Override

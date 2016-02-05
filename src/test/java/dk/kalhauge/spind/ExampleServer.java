@@ -21,7 +21,7 @@ public class ExampleServer extends Server {
   @Override
   public void command(String line) {
     super.command(line);
-    System.out.println("\n#"+line);
+    System.out.println("\n## "+line);
     }
     
   public Collection<Person> getPerson() {

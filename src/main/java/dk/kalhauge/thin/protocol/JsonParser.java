@@ -19,7 +19,7 @@ public class JsonParser implements Parser {
 
   @Override
   public String getMime() {
-    return "application/json";
+    return JSON;
     }
 
   @Override

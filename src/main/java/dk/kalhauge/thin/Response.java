@@ -1,6 +1,5 @@
 package dk.kalhauge.thin;
 
-import dk.kalhauge.thin.exceptions.ClientErrorException;
 import java.io.File;
 import java.io.IOException;
 

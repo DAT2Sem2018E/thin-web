@@ -1,6 +1,5 @@
 package dk.kalhauge.thin;
 
-import dk.kalhauge.thin.exceptions.ClientErrorException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -36,6 +35,7 @@ class HttpResponse implements Response {
   private final OutputStream out;
   private int status = 200;
   private String type = "json";
+  private boolean open = true;
 
   public HttpResponse(OutputStream out) {
     this.out = out;
@@ -71,6 +71,8 @@ class HttpResponse implements Response {
   
   @Override
   public void send(byte[] body) throws IOException {
+    if (open) open = false;
+    else return;
     try {
       writeHeaders(body.length);
       out.write(body);
@@ -80,6 +82,8 @@ class HttpResponse implements Response {
 
   @Override
   public void send() throws IOException {
+    if (open) open = false;
+    else return;
     try {
       writeHeaders(0);
       }
@@ -88,11 +92,15 @@ class HttpResponse implements Response {
 
   @Override
   public void send(String message) throws IOException {
+    if (open) open = false;
+    else return;
     send(message.getBytes("utf-8"));
     }
   
   @Override
   public void send(File file) throws IOException {
+    if (open) open = false;
+    else return;
     int dotPos = file.getName().lastIndexOf(".");
     type = dotPos < 0 ? "txt" : file.getName().substring(dotPos + 1);
     try {
@@ -108,6 +116,8 @@ class HttpResponse implements Response {
 
   @Override
   public void send(HttpException he) throws IOException {
+    if (open) open = false;
+    else return;
     //TODO: use the exception message
     status(he.getStatus());
     send();

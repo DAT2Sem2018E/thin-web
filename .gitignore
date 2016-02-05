@@ -1,2 +1,3 @@
 nbproject/
 target/
+/src/test/java/dk/kalhauge/spind/TestComm.java
