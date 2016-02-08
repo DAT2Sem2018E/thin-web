@@ -3,5 +3,6 @@ package dk.kalhauge.thin;
 import java.lang.reflect.Method;
 
 public interface Context {
-  boolean isHidden(Method method);
+  default boolean isHidden(Method method) { return false; }
+  String pathOf(String url) throws Response.BadRequestException;
   }

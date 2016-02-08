@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public abstract class Server implements Runnable {
+public abstract class Server implements Runnable, Context {
   private boolean running = false;
   private final Map<String, Parser> parsers = new HashMap<>();
   private final int port;
@@ -49,7 +49,24 @@ public abstract class Server implements Runnable {
     return name;
     }
   
-  String path() {
+  /**
+   * Override this method to change which files are special
+   * @param url of a file or resource
+   * @return the relative path
+   */
+  public boolean isSpecial(String url) {
+    return "/favicon.ico".equals(url);
+    }
+  
+  @Override
+  public String pathOf(String url) throws Response.BadRequestException {
+    //TODO: create generic rule for special files
+    if (isSpecial(url)) return url.substring(1);
+    if (!url.startsWith(path())) throw new Response.BadRequestException();
+    return url.substring(path().length());
+    }
+  
+  public String path() {
     if (name.isEmpty()) return "/";
     return "/"+name+"/";
     }
@@ -115,33 +132,28 @@ public abstract class Server implements Runnable {
       }
     }
   
-  File file(String path) {
-    if ("/favicon.ico".equals(path)) return new File(root, path);
-    return new File(root, path.substring(name.length() + 1));
+  File file(String path) throws Response.BadRequestException {
+    return new File(root, pathOf(path));
     }
   
   void report(HttpService service, String message) {
-    System.err.println(">>> "+message);
+    System.err.print("\n$$ REPORTING '"+message+"'");
     }
   
   public void postCoffee() throws Response.ImATeapotException {
     if ("Teapot".equals(name)) throw new Response.ImATeapotException();
     }
 
-  public void get(Request request, Response response, String... path) throws IOException {
+  public void get(Request request, Response response, String... path) throws IOException, Response.NotFoundException, Response.BadRequestException {
     File file = file(request.getPath());
-    System.out.print("\nPath: "+request.getPath());
-    System.out.print("\nFile: "+file.getAbsolutePath());
     if (file.isFile()) response.send(file);
-    else response.status(404).send("Unknown resource: "+request.getPath());
+    throw new Response.NotFoundException();
     }
 
-  public void post(Request request, Response response, String... path) throws IOException {
+  public void post(Request request, Response response, String... path) throws IOException, Response.NotFoundException, Response.BadRequestException {
     File file = file(request.getPath());
-    System.out.print("\nPath: "+request.getPath());
-    System.out.print("\nFile: "+file.getAbsolutePath());
     if (file.isFile()) response.send(file);
-    else response.status(404).send("Unknown resource: "+request.getPath());
+    throw new Response.NotFoundException();
     }
 
   }

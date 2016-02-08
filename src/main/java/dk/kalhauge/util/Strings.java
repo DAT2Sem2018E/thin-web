@@ -29,7 +29,11 @@ public class Strings {
     return word.substring(pos + 1);
     } 
   
-  public static <T> String join(CharSequence delimiter, Function<T, String> converter, Iterable<T> collection) {
+  public static <T> String join(
+      CharSequence delimiter,
+      Function<T, String> converter,
+      Iterable<T> collection
+      ) {
     String text = null;
     for (T item : collection) {
       if (text == null) text = converter.apply(item);

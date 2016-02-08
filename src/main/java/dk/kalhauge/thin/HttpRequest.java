@@ -1,11 +1,10 @@
 package dk.kalhauge.thin;
 
-import static dk.kalhauge.util.Strings.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,7 +36,7 @@ class HttpRequest implements Request {
   private byte[] read(InputStream in, int number) throws IOException {
     byte[] buffer = new byte[number];
     int count = in.read(buffer);
-    System.out.print("\n  reading "+count+" raw bytes");
+    System.out.print("\n--\n"+new String(buffer, Charset.forName("utf-8")));
     return buffer;
     }
   
@@ -53,9 +52,9 @@ class HttpRequest implements Request {
       }
     }
   
-  HttpRequest(InputStream in) throws IOException, Response.BadRequestException {
+  HttpRequest(InputStream in) throws IOException {
     String[] parts = readLine(in).split(" ");
-    if (parts.length != 3) throw new Response.BadRequestException();
+    if (parts.length != 3) throw new IOException("Bad request");
     method = parts[0].toLowerCase();
     String[] resourceParts = parts[1].split("\\?", 2);
     path = resourceParts[0];

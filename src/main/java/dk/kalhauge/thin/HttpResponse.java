@@ -92,8 +92,6 @@ class HttpResponse implements Response {
 
   @Override
   public void send(String message) throws IOException {
-    if (open) open = false;
-    else return;
     send(message.getBytes("utf-8"));
     }
   
@@ -116,8 +114,6 @@ class HttpResponse implements Response {
 
   @Override
   public void send(HttpException he) throws IOException {
-    if (open) open = false;
-    else return;
     //TODO: use the exception message
     status(he.getStatus());
     send();
