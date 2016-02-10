@@ -17,6 +17,7 @@ class HttpRequest implements Request {
   
   private final Map<String, String> parameters = new HashMap<>();
   private final Map<String, String> headers = new HashMap<>();
+  private final Map<String, String> cookies = new HashMap<>();
   
   private String readLine(InputStream in) throws IOException {
     StringBuilder builder = new StringBuilder();
@@ -69,6 +70,13 @@ class HttpRequest implements Request {
       String value = pair[1].trim();
       headers.put(key, value);
       if (key.equalsIgnoreCase("Content-Length")) contentLength = Integer.valueOf(value);
+      else if (key.equals("Cookie")) {
+        String[] cookieParts = value.split(";");
+        for (String cookiePart : cookieParts) {
+          String[] cookiePair = cookiePart.split("=", 2);
+          cookies.put(cookiePair[0].trim(), cookiePair[1].trim());
+          }
+        }
       }
     while(true);
     byte[] buffer = read(in, contentLength);
@@ -90,8 +98,23 @@ class HttpRequest implements Request {
     }
 
   @Override
+  public Map<String, String> getCookies() {
+    return cookies;
+    }
+
+  @Override
   public String getParameter(String key) {
     return parameters.get(key);
+    }
+
+  @Override
+  public String getCookie(String key) {
+    return cookies.get(key);
+    }
+
+  @Override
+  public String getSessionId() {
+    return cookies.get("SID");
     }
   
   @Override

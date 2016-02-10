@@ -6,6 +6,7 @@ import java.io.IOException;
 public interface Response {
   Response status(int value);
   Response type(String value);
+  void setSessionId(String value);
   void send(byte[] body) throws IOException;
   void send() throws IOException;
   void send(String message) throws IOException;

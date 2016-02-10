@@ -39,6 +39,7 @@ for (Invocator candidate : candidates) System.out.println("++   "+candidate);
         }
       }
     catch (IOException ex) {
+      ex.printStackTrace();
       server.report(this, ex.getMessage());
       }
     }

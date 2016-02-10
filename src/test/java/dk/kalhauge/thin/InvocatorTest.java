@@ -22,6 +22,10 @@ public class InvocatorTest {
       public String pathOf(String url) {
         throw new UnsupportedOperationException("No support for #path");
         }
+      @Override
+      public Session provideSession(Request request, Response response) {
+        throw new UnsupportedOperationException("No support for #provideSession");
+        }
       };
   Context showingContext = new Context() {
       @Override
@@ -29,6 +33,10 @@ public class InvocatorTest {
       @Override
       public String pathOf(String url) {
         throw new UnsupportedOperationException("No support for #path");
+        }
+      @Override
+      public Session provideSession(Request request, Response response) {
+        throw new UnsupportedOperationException("No support for #provideSession");
         }
       };
   

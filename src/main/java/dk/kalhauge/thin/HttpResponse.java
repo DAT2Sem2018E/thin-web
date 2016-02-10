@@ -32,10 +32,12 @@ class HttpResponse implements Response {
     put("ico", "image/x-icon");
     }};
   private static final int NL = 10;
+  private static final int CR = 13;
   private final OutputStream out;
   private int status = 200;
   private String type = "json";
   private boolean open = true;
+  private String sessionId = null;
 
   public HttpResponse(OutputStream out) {
     this.out = out;
@@ -44,6 +46,7 @@ class HttpResponse implements Response {
   private static void writeLine(OutputStreamWriter writer, String line) throws IOException {
     System.out.print("\n>>"+line);
     writer.write(line);
+    writer.write(CR);
     writer.write(NL);
     }
   
@@ -52,6 +55,7 @@ class HttpResponse implements Response {
     writeLine(writer, "HTTP/1.1 "+status+" "+messages.get(status));
     writeLine(writer, "Content-Type: "+mimes.get(type));
     writeLine(writer, "Content-Length: "+contentLenght);
+    if (sessionId != null) writeLine(writer, "Set-Cookie: SID="+sessionId);
     writeLine(writer, "");
     writer.flush();
     }
@@ -68,6 +72,9 @@ class HttpResponse implements Response {
     type = value.toLowerCase();
     return this;
     }
+
+  @Override
+  public void setSessionId(String value) { sessionId = value; }
   
   @Override
   public void send(byte[] body) throws IOException {

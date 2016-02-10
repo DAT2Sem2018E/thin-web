@@ -52,6 +52,7 @@ public class Invocator implements Comparable<Invocator> {
     for (Class type : method.getParameterTypes()) {
       if (type == Request.class) continue;
       if (type == Response.class) continue;
+      if (type == Session.class) continue;
       free++;
       }
     if (method.isVarArgs()) return texts.size() >= free - 1;
@@ -79,6 +80,7 @@ public class Invocator implements Comparable<Invocator> {
         Class type = types[index];
         if (type == Request.class) values[index] = request;
         else if (type == Response.class) values[index] = response;
+        else if (type == Session.class) values[index] = context.provideSession(request, response);
         else {
           if (method.isVarArgs() && index == types.length - 1)
               values[index] = parser.fromTexts(type, arguments);

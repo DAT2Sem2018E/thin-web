@@ -14,8 +14,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public abstract class Server implements Runnable, Context {
-  private boolean running = false;
+  private volatile boolean running = false;
   private final Map<String, Parser> parsers = new HashMap<>();
+  private final Map<String, HttpSession> sessions = new HashMap<>();
   private final int port;
   private File root;
   private String name;
@@ -28,6 +29,21 @@ public abstract class Server implements Runnable, Context {
     name = getClass().getSimpleName();
     if (name.endsWith("Server")) name = name.substring(0, name.length() - 6);
     parser(new JsonParser());
+    }
+
+  public Server() throws IOException {
+    this(4711);
+    }
+    
+  @Override
+  public Session provideSession(Request request, Response response) {
+    String id = request.getSessionId();
+    if (id != null && sessions.containsKey(id)) return sessions.get(id);
+    HttpSession session = new HttpSession();
+    id = ""+session.hashCode();
+    sessions.put(id, session);
+    response.setSessionId(id);
+    return session;
     }
   
   protected final Parser parser(String mime) {
@@ -145,6 +161,7 @@ public abstract class Server implements Runnable, Context {
     }
 
   public void get(Request request, Response response, String... path) throws IOException, Response.NotFoundException, Response.BadRequestException {
+    System.out.println("Cookie SID: "+request.getCookie("SID"));
     File file = file(request.getPath());
     if (file.isFile()) response.send(file);
     throw new Response.NotFoundException();
